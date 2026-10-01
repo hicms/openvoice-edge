@@ -1,0 +1,5 @@
+# 复制为 .dev.vars 后填写（.dev.vars 已被 gitignore）。
+# 管理员令牌：至少 24 个字符，建议用 `node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"` 生成。
+ADMIN_TOKEN=
+# 可选：硅基流动 Key 的引导值。也可以登录后在「管理」页填写（网页配置优先）。
+SILICONFLOW_API_KEY=

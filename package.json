@@ -1,0 +1,49 @@
+{
+  "name": "openvoice-edge",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "typecheck": "tsc -b",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "check:size": "node scripts/check-size.ts",
+    "sync-voices": "node scripts/sync-voices.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "hono": "^4.13.12",
+    "i18next": "^26.4.2",
+    "lucide-react": "^1.49.0",
+    "radix-ui": "^1.6.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-i18next": "^17.0.15",
+    "react-router": "^8.4.0",
+    "shadcn": "^4.21.0",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.62.3",
+    "@cloudflare/workers-types": "^5.20260930.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.86.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.145.0"
+  }
+}
