@@ -80,17 +80,10 @@ export interface CreatedAccessKey extends AccessKeyView {
 
 export type Role = 'admin' | 'user'
 
-export interface PublicTtsModel extends TtsModelInfo {
-  available: boolean
-}
-
-export interface PublicSttModel extends SttModelInfo {
-  available: boolean
-}
-
+/** Only models the server can actually run are listed; nothing here reveals which keys are configured. */
 export interface PublicConfig {
-  ttsModels: PublicTtsModel[]
-  sttModels: PublicSttModel[]
+  ttsModels: TtsModelInfo[]
+  sttModels: SttModelInfo[]
   defaults: Pick<AppSettings, 'defaultTtsModel' | 'defaultSttModel' | 'defaultVoices'>
   limits: { maxTtsChars: number; maxAudioMb: number }
 }
