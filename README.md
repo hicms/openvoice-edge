@@ -47,6 +47,12 @@ npm run deploy
 
 The `CONFIG` KV namespace in `wrangler.jsonc` has no id. Recent Wrangler versions create it on the first deploy. If yours does not, run `npx wrangler kv namespace create CONFIG` and put the returned id in `wrangler.jsonc`.
 
+### Automatic deploy from GitHub
+
+`.github/workflows/deploy.yml` runs typecheck, lint, tests and the build on every push and pull request. A push to `main` then deploys to Cloudflare through the `production` GitHub Environment.
+
+It needs two secrets in that Environment: `CLOUDFLARE_API_TOKEN` (an API token with only Workers Scripts: Edit and Workers KV Storage: Edit) and `CLOUDFLARE_ACCOUNT_ID`. Install and build run without them. Only the deploy step sees the token. `ADMIN_TOKEN` and the SiliconFlow key are not stored in GitHub. Set them once with `wrangler secret put`, and later deploys keep them.
+
 ### Where settings live
 
 | Setting | Stored in | Notes |
