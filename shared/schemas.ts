@@ -50,7 +50,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export const AdminConfigUpdateSchema = AppSettingsSchema.partial().extend({
   /** Empty string keeps the stored key; use the dedicated DELETE endpoint to clear it. */
-  siliconflowApiKey: z.string().max(300).optional(),
+  siliconflowApiKey: z
+    .string()
+    .trim()
+    .max(300)
+    .regex(/^[\x21-\x7e]*$/, 'must be a single token without spaces')
+    .optional(),
 })
 export type AdminConfigUpdate = z.infer<typeof AdminConfigUpdateSchema>
 

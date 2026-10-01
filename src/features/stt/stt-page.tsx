@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { useConfig } from '@/features/config/use-config'
-import { PageLoading } from '@/features/tts/tts-page'
+import { PageError, PageLoading } from '@/features/tts/tts-page'
 import { errorMessage } from '@/i18n/error-message'
 import { ApiError, request } from '@/lib/api'
 import { AudioInput } from './audio-input'
@@ -17,8 +17,9 @@ import { ScenarioPicker } from './scenario-picker'
 import { TranscriptView } from './transcript-view'
 
 export function SttPage() {
-  const { config } = useConfig()
-  return config ? <SttWorkspace config={config} /> : <PageLoading />
+  const { config, error, reload } = useConfig()
+  if (config) return <SttWorkspace config={config} />
+  return error ? <PageError error={error} onRetry={reload} /> : <PageLoading />
 }
 
 async function transcribe(file: File, model: string, signal: AbortSignal): Promise<Transcript> {

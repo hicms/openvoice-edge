@@ -2,10 +2,16 @@
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results = new Array<R>(items.length)
   let next = 0
+  let failed = false
   async function worker(): Promise<void> {
-    while (next < items.length) {
+    while (!failed && next < items.length) {
       const index = next++
-      results[index] = await fn(items[index]!, index)
+      try {
+        results[index] = await fn(items[index]!, index)
+      } catch (err) {
+        failed = true
+        throw err
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))

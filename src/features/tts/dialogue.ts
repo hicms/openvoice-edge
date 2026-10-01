@@ -23,9 +23,9 @@ export function turnsToScript(turns: readonly Turn[]): string {
 
 export function scriptToTurns(script: string): Turn[] {
   const turns: Turn[] = []
-  const pattern = /\[S([12])\]([^[]*)/g
-  for (const match of script.matchAll(pattern)) {
-    turns.push({ speaker: match[1] === '2' ? 2 : 1, text: match[2]!.trim() })
+  const parts = script.split(/\[S([12])\]/)
+  for (let i = 1; i < parts.length; i += 2) {
+    turns.push({ speaker: parts[i] === '2' ? 2 : 1, text: (parts[i + 1] ?? '').trim() })
   }
   if (turns.length > 0) return turns
   return script.trim() ? [{ speaker: 1, text: script.trim() }] : emptyDialogue()

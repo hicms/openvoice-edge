@@ -41,8 +41,18 @@ export interface RawEdgeVoice {
   StyleList?: string[]
 }
 
+/** XML 1.0 forbids these control characters even when escaped; Edge rejects the whole request if one slips in. */
+function stripInvalidXmlChars(text: string): string {
+  return Array.from(text)
+    .filter((ch) => {
+      const code = ch.charCodeAt(0)
+      return code >= 0x20 || code === 0x09 || code === 0x0a || code === 0x0d
+    })
+    .join('')
+}
+
 export function escapeXml(text: string): string {
-  return text
+  return stripInvalidXmlChars(text)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')

@@ -28,8 +28,21 @@ const INSTRUCTION_PRESETS = ['happy', 'sad', 'gentle', 'excited', 'sichuan', 'ca
 const MAX_IMPORT_BYTES = 1024 * 1024
 
 export function TtsPage() {
-  const { config } = useConfig()
-  return config ? <TtsWorkspace config={config} /> : <PageLoading />
+  const { config, error, reload } = useConfig()
+  if (config) return <TtsWorkspace config={config} />
+  return error ? <PageError error={error} onRetry={reload} /> : <PageLoading />
+}
+
+export function PageError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col items-start gap-3 py-12" role="alert">
+      <p className="text-sm text-destructive">{errorMessage(error)}</p>
+      <Button variant="outline" onClick={onRetry}>
+        {t('common.retry')}
+      </Button>
+    </div>
+  )
 }
 
 export function PageLoading() {
@@ -72,6 +85,7 @@ function TtsWorkspace({ config }: { config: PublicConfig }) {
   }, [model.id, voices, tuning])
 
   useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(() => saveHistory(history), [history])
   useEffect(() => {
     if (!result) return
     return () => URL.revokeObjectURL(result.url)
@@ -99,11 +113,7 @@ function TtsWorkspace({ config }: { config: PublicConfig }) {
         onProgress: (done, total) => setBusy({ done, total }),
       })
       setResult({ url: URL.createObjectURL(blob), blob, filename: filenameFromText(input.replace(/\[S\d\]/g, ' '), 'mp3') })
-      setHistory((items) => {
-        const next = addHistory(items, { model: model.id, text: input, params })
-        saveHistory(next)
-        return next
-      })
+      setHistory((items) => addHistory(items, { model: model.id, text: input, params }))
     } catch (err) {
       if (!(err instanceof ApiError && err.code === 'aborted')) toast.error(errorMessage(err))
     } finally {
@@ -145,7 +155,6 @@ function TtsWorkspace({ config }: { config: PublicConfig }) {
           onRestore={restore}
           onClear={() => {
             setHistory([])
-            saveHistory([])
             toast.success(t('speak.history.cleared'))
           }}
           engineName={engineName}

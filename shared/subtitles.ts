@@ -31,7 +31,8 @@ export function formatTimestamp(seconds: number, millisSeparator: ',' | '.'): st
 }
 
 function cueText(segment: TranscriptSegment, label: SpeakerLabel): string {
-  return segment.speaker ? `${label(segment.speaker)}: ${segment.text}` : segment.text
+  const text = segment.text.replace(/\n{2,}/g, '\n')
+  return segment.speaker ? `${label(segment.speaker)}: ${text}` : text
 }
 
 export function toSrt(segments: TranscriptSegment[], label: SpeakerLabel = defaultLabel): string {

@@ -39,7 +39,13 @@ export function useRecorder() {
   /** Throws when the microphone is unavailable or permission is denied. */
   const start = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    const recorder = new MediaRecorder(stream)
+    let recorder: MediaRecorder
+    try {
+      recorder = new MediaRecorder(stream)
+    } catch (err) {
+      stream.getTracks().forEach((track) => track.stop())
+      throw err
+    }
     recorderRef.current = recorder
     recorder.start()
     setSeconds(0)
