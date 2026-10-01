@@ -12,7 +12,8 @@
     "lint": "oxlint",
     "test": "vitest run",
     "check:size": "node scripts/check-size.ts",
-    "sync-voices": "node scripts/sync-voices.ts"
+    "sync-voices": "node scripts/sync-voices.ts",
+    "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

@@ -1,7 +1,8 @@
 import { AppError } from '../../../shared/errors.ts'
 import { COSYVOICE_MODEL_ID, MOSS_MODEL_ID, SILICONFLOW_VOICES, stripVoicePrefix } from '../../../shared/models.ts'
 import { splitText } from '../../../shared/text-split.ts'
-import { concatBuffers, mapLimit } from '../../lib/concurrency.ts'
+import { mapLimit } from '../../../shared/concurrency.ts'
+import { concatBuffers } from '../../lib/buffers.ts'
 import type { TtsProvider } from '../tts/types.ts'
 import type { SiliconflowClient } from './client.ts'
 

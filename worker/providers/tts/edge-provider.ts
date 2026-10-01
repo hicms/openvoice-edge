@@ -1,7 +1,8 @@
 import { AppError } from '../../../shared/errors.ts'
 import { splitText } from '../../../shared/text-split.ts'
 import { findEdgeVoice } from '../../data/voices.ts'
-import { concatBuffers, mapLimit } from '../../lib/concurrency.ts'
+import { mapLimit } from '../../../shared/concurrency.ts'
+import { concatBuffers } from '../../lib/buffers.ts'
 import type { EdgeClient } from './edge.ts'
 import type { TtsProvider } from './types.ts'
 
