@@ -1,5 +1,3 @@
-export default {
-  fetch() {
-    return new Response('ok')
-  },
-} satisfies ExportedHandler
+import { createApp } from './app.ts'
+
+export default createApp()

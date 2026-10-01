@@ -32,7 +32,9 @@ export const TranscriptionFieldsSchema = z.object({
 export const AppSettingsSchema = z.object({
   defaultTtsModel: z.enum(TTS_MODEL_IDS),
   defaultSttModel: z.enum(STT_MODEL_IDS),
-  defaultVoices: z.record(z.string(), z.string().min(1).max(100)),
+  defaultVoices: z
+    .record(z.string(), z.string().min(1).max(100))
+    .refine((voices) => Object.keys(voices).every((id) => TTS_MODEL_IDS.includes(id)), 'unknown TTS model id'),
   maxTtsChars: z.number().int().min(100).max(HARD_MAX_TTS_CHARS),
   maxAudioMb: z.number().int().min(1).max(HARD_MAX_AUDIO_MB),
 })
