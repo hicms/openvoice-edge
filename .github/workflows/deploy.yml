@@ -29,8 +29,9 @@ jobs:
       - run: npm run build
 
   deploy:
-    # Runs only for pushes to main (or a manual run on main), never for pull requests.
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Pushes and pull requests only run the checks. Deploying is always a deliberate action:
+    # `./scripts/release.ps1 -Deploy`, or "Run workflow" on the Actions tab (main branch only).
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 10

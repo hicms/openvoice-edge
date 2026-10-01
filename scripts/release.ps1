@@ -1,23 +1,28 @@
 <#
 .SYNOPSIS
-  One-command release: local checks -> commit -> push -> watch the GitHub Actions deploy.
+  One-command release: local checks -> commit -> push -> watch the GitHub Actions checks.
+  Nothing reaches Cloudflare Workers unless you pass -Deploy.
 
 .EXAMPLE
-  ./scripts/release.ps1 -Message "Fix voice picker search"
-  ./scripts/release.ps1 -Message "Tweak limits" -Url https://openvoice-edge.your-name.workers.dev
+  ./scripts/release.ps1 -Message "Fix voice picker search"                 # commit + push, checks only
+  ./scripts/release.ps1 -Message "Fix voice picker search" -Deploy         # ... and deploy to Workers
+  ./scripts/release.ps1 -Deploy                                            # deploy what is already on main
+  ./scripts/release.ps1 -Deploy -Url https://openvoice-edge.your-name.workers.dev
   ./scripts/release.ps1 -DryRun        # run the checks and show what would happen, change nothing
 
 .NOTES
-  Needs git, node and the GitHub CLI (gh auth login). The deploy job may wait for your approval
-  on the Actions page when the `production` Environment has required reviewers.
-  With -Url the script also checks /api/health after the deploy, and runs the full smoke test
-  when the OVE_TOKEN environment variable holds an access key.
+  Needs git, node and the GitHub CLI (gh auth login). With -Deploy the script starts the
+  workflow on GitHub; its deploy job may wait for your approval on the Actions page when the
+  `production` Environment has required reviewers.
+  With -Url (and -Deploy) the script also checks /api/health after the deploy, and runs the
+  full smoke test when the OVE_TOKEN environment variable holds an access key.
 #>
 [CmdletBinding()]
 param(
   [string]$Message,
   [string]$Url,
   [string]$Branch = 'main',
+  [switch]$Deploy,
   [switch]$SkipChecks,
   [switch]$DryRun
 )
@@ -71,8 +76,8 @@ if (-not $SkipChecks) {
 $dirty = @(Capture { git status --porcelain }).Where({ $_ })
 $ahead = [int](Capture { git rev-list --count "origin/$Branch..HEAD" })
 
-if ($dirty.Count -eq 0 -and $ahead -eq 0) {
-  Write-Host "`nNothing to release: no local changes and nothing unpushed." -ForegroundColor Yellow
+if ($dirty.Count -eq 0 -and $ahead -eq 0 -and -not $Deploy) {
+  Write-Host "`nNothing to release: no local changes and nothing unpushed. Use -Deploy to redeploy what is on $Branch." -ForegroundColor Yellow
   exit 0
 }
 
@@ -101,7 +106,8 @@ if ($dirty.Count -gt 0) {
 }
 
 if ($DryRun) {
-  Write-Host "`nDry run finished. Would commit $($dirty.Count) changed file(s) and push $($ahead) existing commit(s) to origin/$Branch." -ForegroundColor Yellow
+  $target = if ($Deploy) { 'and then deploy to Workers' } else { 'without deploying to Workers' }
+  Write-Host "`nDry run finished. Would commit $($dirty.Count) changed file(s) and push $($ahead) existing commit(s) to origin/$Branch, $target." -ForegroundColor Yellow
   exit 0
 }
 
@@ -109,28 +115,46 @@ if ($dirty.Count -gt 0) {
   Run 'Commit' { git add -A; git commit -q -m $Message }
 }
 
-Run 'Push' { git push origin $Branch }
+if ($dirty.Count -gt 0 -or $ahead -gt 0) { Run 'Push' { git push origin $Branch } }
 $sha = (Capture { git rev-parse HEAD }).Trim()
 
-Step 'Waiting for the GitHub Actions run'
-$runId = $null
-for ($i = 0; $i -lt 30 -and -not $runId; $i++) {
-  $runs = Capture { gh run list --commit $sha --json databaseId,workflowName --limit 5 } | ConvertFrom-Json
-  $match = @($runs).Where({ $_.workflowName -eq 'CI and deploy' }) | Select-Object -First 1
-  if ($match) { $runId = $match.databaseId } else { Start-Sleep -Seconds 2 }
+function Find-Run([string]$Event, [datetime]$Since) {
+  for ($i = 0; $i -lt 30; $i++) {
+    $runs = Capture { gh run list --workflow 'CI and deploy' --commit $sha --event $Event --json databaseId,createdAt --limit 5 } | ConvertFrom-Json
+    $match = @($runs).Where({ [datetime]$_.createdAt -ge $Since }) | Select-Object -First 1
+    if ($match) { return $match.databaseId }
+    Start-Sleep -Seconds 2
+  }
+  Fail 'The workflow run did not start within a minute. Check the Actions tab on GitHub.'
 }
-if (-not $runId) { Fail 'The workflow run did not start within a minute. Check the Actions tab on GitHub.' }
 
-$runUrl = (Capture { gh run view $runId --json url --jq .url }).Trim()
-Write-Host "Run: $runUrl"
-Write-Host 'If the deploy job asks for approval, open the link above and press Approve.' -ForegroundColor Yellow
-
-gh run watch $runId --exit-status --interval 5
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "`nThe run failed. Failed steps:" -ForegroundColor Red
-  gh run view $runId --log-failed 2>&1 | Select-Object -Last 40
-  Fail "Release failed. Details: $runUrl"
+function Watch-Run([long]$RunId) {
+  $runUrl = (Capture { gh run view $RunId --json url --jq .url }).Trim()
+  Write-Host "Run: $runUrl"
+  gh run watch $RunId --exit-status --interval 5
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nThe run failed. Failed steps:" -ForegroundColor Red
+    gh run view $RunId --log-failed 2>&1 | Select-Object -Last 40
+    Fail "Release failed. Details: $runUrl"
+  }
 }
+
+if (-not $Deploy) {
+  Step 'Waiting for the GitHub checks (no deploy)'
+  # A push run exists only when something new was pushed; the 5 minute window covers clock skew.
+  if ($dirty.Count -gt 0 -or $ahead -gt 0) {
+    Watch-Run (Find-Run 'push' ([datetime]::UtcNow.AddMinutes(-5)))
+  }
+  Write-Host "`nPushed $($sha.Substring(0, 7)). Checks passed. Not deployed to Workers (add -Deploy to deploy)." -ForegroundColor Green
+  exit 0
+}
+
+Step 'Starting the deploy workflow'
+$started = [datetime]::UtcNow.AddSeconds(-10)
+Run 'Trigger workflow' { gh workflow run 'CI and deploy' --ref $Branch }
+$runId = Find-Run 'workflow_dispatch' $started
+Write-Host 'If the deploy job asks for approval, open the link below and press Approve.' -ForegroundColor Yellow
+Watch-Run $runId
 
 if ($Url) {
   $Url = $Url.TrimEnd('/')
@@ -149,4 +173,4 @@ if ($Url) {
   }
 }
 
-Write-Host "`nReleased $($sha.Substring(0, 7)) to Cloudflare." -ForegroundColor Green
+Write-Host "`nDeployed $($sha.Substring(0, 7)) to Cloudflare Workers." -ForegroundColor Green
