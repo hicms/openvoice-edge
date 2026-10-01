@@ -53,6 +53,8 @@ The `CONFIG` KV namespace in `wrangler.jsonc` has no id. Recent Wrangler version
 
 It needs two secrets in that Environment: `CLOUDFLARE_API_TOKEN` (an API token with only Workers Scripts: Edit and Workers KV Storage: Edit) and `CLOUDFLARE_ACCOUNT_ID`. Install and build run without them. Only the deploy step sees the token. `ADMIN_TOKEN` and the SiliconFlow key are not stored in GitHub. Set them once with `wrangler secret put`, and later deploys keep them.
 
+To release from your machine in one step, run `./scripts/release.ps1 -Message "what changed"`. It runs the checks, scans the changes for secrets, commits, pushes and waits for the deploy. Add `-Url https://your.workers.dev` to check the live site afterwards, and `-DryRun` to try it without committing or pushing.
+
 ### Where settings live
 
 | Setting | Stored in | Notes |
