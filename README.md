@@ -49,15 +49,22 @@ The `CONFIG` KV namespace in `wrangler.jsonc` has no id. Recent Wrangler version
 
 ### Deploying from GitHub
 
-`.github/workflows/deploy.yml` runs typecheck, lint, tests and the build on every push and pull request. **A push never deploys by itself.** Deploying is a separate, deliberate step:
+`.github/workflows/deploy.yml` runs typecheck, lint, tests and the build on every push and pull request. **A push never deploys by itself.** Deploying is a separate, deliberate step. Run `./scripts/release.ps1` with no arguments to print the help. Nothing happens until you pass an option.
 
-- `./scripts/release.ps1 -Message "what changed"` runs the checks, scans the changes for secrets, commits, pushes and waits for the GitHub checks. Nothing reaches Cloudflare.
-- `./scripts/release.ps1 -Message "what changed" -Deploy` does the same and then deploys to Workers. `-Deploy` alone deploys what is already on `main`.
-- You can also deploy from the Actions tab: choose "CI and deploy", then "Run workflow" on `main`.
+| Command | What it does |
+|---|---|
+| `./scripts/release.ps1 -Message "what changed"` | Runs the checks, scans the changes for secrets, commits, pushes and waits for the GitHub checks. Nothing reaches Cloudflare. |
+| `./scripts/release.ps1 -Message "what changed" -Deploy` | The same, then deploys to Workers and checks the live site. |
+| `./scripts/release.ps1 -Deploy` | Deploys what is already on `main`. |
+| `./scripts/release.ps1 -Push` | Pushes commits you already made. |
+| `./scripts/release.ps1 -DryRun` | Rehearses everything without committing, pushing or deploying. |
 
-Add `-Url https://your.workers.dev` to check the live site after a deploy, and `-DryRun` to try the script without committing or pushing.
+After a deploy the script checks `https://openvoice-edge.hicms.workers.dev/api/health`. Use `-Url` to check another site. If `OVE_TOKEN` holds an access key, it also runs the full smoke test. `-SkipChecks` skips the local checks.
+
+You can also deploy from the Actions tab: choose "CI and deploy", then "Run workflow" on `main`.
 
 The deploy job needs two secrets in the `production` GitHub Environment: `CLOUDFLARE_API_TOKEN` (an API token with only Workers Scripts: Edit and Workers KV Storage: Edit) and `CLOUDFLARE_ACCOUNT_ID`. Install and build run without them. Only the deploy step sees the token. `ADMIN_TOKEN` and the SiliconFlow key are not stored in GitHub. Set them once with `wrangler secret put`, and later deploys keep them.
+
 ### Where settings live
 
 | Setting | Stored in | Notes |

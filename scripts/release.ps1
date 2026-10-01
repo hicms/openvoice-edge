@@ -1,32 +1,69 @@
-<#
+﻿<#
 .SYNOPSIS
-  One-command release: local checks -> commit -> push -> watch the GitHub Actions checks.
-  Nothing reaches Cloudflare Workers unless you pass -Deploy.
+  OpenVoice Edge release script. Run it with no arguments to see this help.
+  Checks -> commit -> push -> watch GitHub checks. Nothing reaches Cloudflare Workers unless you pass -Deploy.
 
 .EXAMPLE
-  ./scripts/release.ps1 -Message "Fix voice picker search"                 # commit + push, checks only
-  ./scripts/release.ps1 -Message "Fix voice picker search" -Deploy         # ... and deploy to Workers
-  ./scripts/release.ps1 -Deploy                                            # deploy what is already on main
-  ./scripts/release.ps1 -Deploy -Url https://openvoice-edge.your-name.workers.dev
-  ./scripts/release.ps1 -DryRun        # run the checks and show what would happen, change nothing
-
-.NOTES
-  Needs git, node and the GitHub CLI (gh auth login). With -Deploy the script starts the
-  workflow on GitHub; its deploy job may wait for your approval on the Actions page when the
-  `production` Environment has required reviewers.
-  With -Url (and -Deploy) the script also checks /api/health after the deploy, and runs the
-  full smoke test when the OVE_TOKEN environment variable holds an access key.
+  ./scripts/release.ps1                                        # show help
+  ./scripts/release.ps1 -Message "Fix search"                  # commit + push, GitHub runs checks only
+  ./scripts/release.ps1 -Message "Fix search" -Deploy          # ... and deploy to Workers
+  ./scripts/release.ps1 -Deploy                                # deploy what is already on main
+  ./scripts/release.ps1 -Push                                  # push commits you already made
+  ./scripts/release.ps1 -DryRun                                # try everything, change nothing
 #>
 [CmdletBinding()]
 param(
   [string]$Message,
-  [string]$Url,
+  [string]$Url = 'https://openvoice-edge.hicms.workers.dev',
   [string]$Branch = 'main',
+  [switch]$Push,
   [switch]$Deploy,
   [switch]$SkipChecks,
-  [switch]$DryRun
+  [switch]$DryRun,
+  [Alias('h', '?')][switch]$Help
 )
 
+function Show-Help {
+  Write-Host @"
+
+OpenVoice Edge 发版脚本
+
+用法：
+  ./scripts/release.ps1 [参数]
+
+不带任何参数只显示本帮助，不会执行任何操作。
+
+参数：
+  -Message "说明"   提交所有改动（说明即提交信息）、推送，并等待 GitHub 检查结果。
+                    不会部署到 Cloudflare Workers。
+  -Push             只推送已经提交好的内容（不新建提交），并等待检查结果。
+  -Deploy           部署到 Cloudflare Workers，部署后检查线上站点。
+                    可与 -Message 一起用：先提交推送，再部署。
+  -Url <地址>       部署后检查的站点，默认 https://openvoice-edge.hicms.workers.dev
+  -SkipChecks       跳过本地的类型检查、lint、测试和构建。
+  -DryRun           只演练：跑检查并显示将要做什么，不提交、不推送、不部署。
+  -Branch <分支>    发版分支，默认 main。
+  -Help, -h, -?     显示本帮助。
+
+示例：
+  ./scripts/release.ps1 -Message "修复声音搜索"             只提交并推送
+  ./scripts/release.ps1 -Message "修复声音搜索" -Deploy     提交、推送并部署
+  ./scripts/release.ps1 -Deploy                             部署 main 上现有的版本
+  ./scripts/release.ps1 -DryRun                             演练
+
+说明：
+  需要 git、node、npm 和 GitHub CLI（先运行 gh auth login）。
+  提交前会扫描改动里是否有 API Key 或 .dev.vars 中的值，发现就拒绝提交。
+  部署后会调用 /api/health。如果设置了环境变量 OVE_TOKEN（一把访问密钥），
+  还会运行完整的 smoke 测试。
+
+"@
+}
+
+if ($Help -or $PSBoundParameters.Count -eq 0) {
+  Show-Help
+  exit 0
+}
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path -Parent $PSScriptRoot)
