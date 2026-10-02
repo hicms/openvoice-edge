@@ -82,6 +82,18 @@ The admin creates one key per person on the Admin page (format `ovk_<id>_<secret
 
 The Worker rate-limits by IP before it checks the key (60 per minute), and again per key afterwards (30 per minute). Long text is sent in several calls, so a 5000-character text can use 7 to 10 of those 30. Change the limits in `wrangler.jsonc`.
 
+### Operation logs
+
+Open **Admin → Operation logs** to review speech and transcription requests, newest first. Filter by operation type or result, refresh for new records, or load older records. Settings remain in their own tab.
+
+Each entry shows the completion time (in your browser's local time), the administrator or access-key label, model, input character count or uploaded audio size when available, processing time, and success or failure. Failed requests show a short reason. Revoking an access key does not remove its existing records or label.
+
+Logs cover authenticated requests that reach `/v1/audio/speech` or `/v1/audio/transcriptions`, from both the website and API clients. Each client-side part of a long text is a separate entry. Server-side splitting remains one entry. Success means the server finished processing, not that the browser finished playback or download. Browser cancellation, authentication failures and requests rejected by the authentication rate limit are not separate log events.
+
+Only summaries are stored: no input text, tone instructions, transcript, audio, filename, IP address or credential. Entries expire after 30 days. Processing time excludes the log write. The administrator-only endpoint is `GET /api/admin/logs`, with optional `kind=speech|transcription`, `status=success|failed`, and `cursor`. It returns `{ logs, cursor }`; keep the same filters with the returned cursor until it is `null`. A filtered page may be empty while its cursor still points to older records.
+
+Logs use the existing `CONFIG` KV binding, so no migration or new service is needed. KV is eventually consistent and records may take time to appear. Each completed request adds one KV write and shares the [KV usage limits](https://developers.cloudflare.com/kv/platform/limits/) with settings and access keys. This is intended for a private, low-volume app. If storage fails or its quota is exhausted, the operation still returns its original result and the Worker emits `operation_log.write_failed`; the record can be missing, and an exhausted shared write quota also affects settings and key changes. Logs are best effort, not a billing ledger or guaranteed audit trail.
+
 ## API
 
 All calls need `Authorization: Bearer <access key>`. The API is same-origin only (no CORS headers).
@@ -118,7 +130,7 @@ Errors use `{ "error": { "message", "type", "code" } }`. Error bodies never incl
 
 - Text and audio go to Microsoft (Edge TTS) or SiliconFlow (everything else). The Worker does not store them.
 - The browser keeps your access key and the last 20 generated texts in `localStorage`. Use a private device, or sign out from the account menu to remove the key.
-- Logs never contain keys, input text or upstream response bodies.
+- Administrators can view operation summaries in KV for 30 days, including access-key labels. Logs never contain credentials, input text, transcripts, filenames, audio or upstream response bodies.
 
 ## Layout
 

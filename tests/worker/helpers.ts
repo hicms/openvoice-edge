@@ -4,27 +4,31 @@ import type { Env } from '../../worker/env.ts'
 export const ADMIN_TOKEN = 'test-admin-token-0123456789-abcdef'
 
 export class FakeKV {
-  readonly data = new Map<string, { value: string; metadata?: unknown }>()
+  readonly data = new Map<string, { value: string; metadata?: unknown; expiration?: number }>()
 
   async get(key: string, type?: string): Promise<unknown> {
     const entry = this.data.get(key)
-    if (!entry) return null
+    if (!entry || (entry.expiration !== undefined && entry.expiration <= Date.now() / 1000)) return null
     return type === 'json' ? JSON.parse(entry.value) : entry.value
   }
 
-  async put(key: string, value: string, options?: { metadata?: unknown }): Promise<void> {
-    this.data.set(key, { value, metadata: options?.metadata })
+  async put(key: string, value: string, options?: { metadata?: unknown; expirationTtl?: number }): Promise<void> {
+    this.data.set(key, { value, metadata: options?.metadata, expiration: options?.expirationTtl ? Date.now() / 1000 + options.expirationTtl : undefined })
   }
 
   async delete(key: string): Promise<void> {
     this.data.delete(key)
   }
 
-  async list(options?: { prefix?: string }) {
+  async list(options?: { prefix?: string; limit?: number; cursor?: string }) {
     const keys = [...this.data.entries()]
-      .filter(([name]) => name.startsWith(options?.prefix ?? ''))
+      .filter(([name, entry]) => name.startsWith(options?.prefix ?? '') && (!entry.expiration || entry.expiration > Date.now() / 1000))
+      .filter(([name]) => !options?.cursor || name > options.cursor)
       .map(([name, entry]) => ({ name, metadata: entry.metadata }))
-    return { keys, list_complete: true, cacheStatus: null }
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+    const page = keys.slice(0, options?.limit ?? 1000)
+    const complete = page.length === keys.length
+    return { keys: page, list_complete: complete, cursor: complete ? '' : page.at(-1)!.name, cacheStatus: null }
   }
 }
 

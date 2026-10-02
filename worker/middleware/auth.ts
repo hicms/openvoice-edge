@@ -40,10 +40,11 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
     role = 'admin'
     identity = 'admin'
   } else {
-    const keyId = await verifyAccessKey(c.env.CONFIG, token)
-    if (!keyId) throw new AppError('unauthorized', 'Missing or invalid access key.')
+    const key = await verifyAccessKey(c.env.CONFIG, token)
+    if (!key) throw new AppError('unauthorized', 'Missing or invalid access key.')
     role = 'user'
-    identity = `ak:${keyId}`
+    identity = `ak:${key.id}`
+    c.set('actorLabel', key.label)
   }
 
   if (!(await underLimit(c.env.USER_LIMITER, identity))) {

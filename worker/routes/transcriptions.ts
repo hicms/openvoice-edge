@@ -6,6 +6,7 @@ import { formatTranscript } from '../../shared/subtitles.ts'
 import { ConfigStore } from '../config/store.ts'
 import type { AppEnv } from '../env.ts'
 import { parseWith } from '../middleware/http.ts'
+import { recordOperation } from '../middleware/operation-log.ts'
 import { requireSiliconflowKey, type Deps } from '../providers/registry.ts'
 import { normalizeTranscription } from '../providers/siliconflow/stt.ts'
 
@@ -14,7 +15,7 @@ const MB = 1024 * 1024
 const FORM_OVERHEAD = MB
 
 export function createTranscriptionRoutes(deps: Deps) {
-  return new Hono<AppEnv>().post('/audio/transcriptions', async (c) => {
+  return new Hono<AppEnv>().post('/audio/transcriptions', recordOperation('transcription'), async (c) => {
     const store = new ConfigStore(c.env)
     const settings = await store.getSettings()
     const limit = settings.maxAudioMb * MB
@@ -34,6 +35,7 @@ export function createTranscriptionRoutes(deps: Deps) {
     }
     const file = form.get('file')
     if (!(file instanceof File) || file.size === 0) throw new AppError('invalid_request', 'A non-empty "file" field is required.')
+    c.get('operationDetails').audioBytes = file.size
     if (file.size > limit) throw new AppError('file_too_large', `Audio is larger than the ${settings.maxAudioMb} MB limit.`)
 
     const field = (name: string) => {
@@ -44,6 +46,7 @@ export function createTranscriptionRoutes(deps: Deps) {
     const modelId = fields.model ?? settings.defaultSttModel
     const model = findSttModel(modelId)
     if (!model) throw new AppError('unsupported_model', `Unsupported transcription model: ${modelId.slice(0, 60)}`)
+    c.get('operationDetails').model = model.id
     if ((fields.response_format === 'srt' || fields.response_format === 'vtt') && !model.timestamps) {
       // Fail before the upstream call so a request that cannot succeed is never billed.
       throw new AppError('no_timestamps', `${model.label} does not return timestamps; use a meeting model for subtitles.`)

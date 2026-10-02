@@ -6,6 +6,8 @@ import { createAccessKey, listAccessKeys, revokeAccessKey } from '../config/acce
 import { ConfigStore } from '../config/store.ts'
 import type { AppEnv } from '../env.ts'
 import { parseWith, readJson } from '../middleware/http.ts'
+import { OperationLogQuerySchema } from '../../shared/operation-logs.ts'
+import { listOperationLogs } from '../logs/operation-store.ts'
 
 /** Events carry names only, never values, so the log cannot leak secrets or user content. */
 function audit(event: string, detail: Record<string, string | boolean> = {}): void {
@@ -18,6 +20,7 @@ async function configView(store: ConfigStore): Promise<AdminConfigView> {
 }
 
 export const adminRoutes = new Hono<AppEnv>()
+  .get('/logs', async (c) => c.json(await listOperationLogs(c.env.CONFIG, parseWith(OperationLogQuerySchema, c.req.query()))))
   .get('/config', async (c) => c.json(await configView(new ConfigStore(c.env))))
   .put('/config', async (c) => {
     const update = parseWith(AdminConfigUpdateSchema, await readJson(c.req.raw))

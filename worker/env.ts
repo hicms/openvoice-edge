@@ -1,4 +1,5 @@
 import type { Role } from '../shared/schemas.ts'
+import type { OperationDetails } from '../shared/operation-logs.ts'
 
 export interface Env {
   /** Admin credential. Shorter than MIN_ADMIN_TOKEN_LENGTH counts as not configured. */
@@ -12,7 +13,7 @@ export interface Env {
 
 export type AppEnv = {
   Bindings: Env
-  Variables: { role: Role; identity: string }
+  Variables: { role: Role; identity: string; actorLabel?: string; operationDetails: OperationDetails }
 }
 
 export const MIN_ADMIN_TOKEN_LENGTH = 24

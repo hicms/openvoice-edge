@@ -45,13 +45,13 @@ export async function revokeAccessKey(kv: KVNamespace, id: string): Promise<bool
   return true
 }
 
-/** Returns the key id when `token` is a live access key. */
-export async function verifyAccessKey(kv: KVNamespace, token: string): Promise<string | null> {
+/** Returns the verified identity, without its credential hash. */
+export async function verifyAccessKey(kv: KVNamespace, token: string): Promise<Pick<AccessKeyView, 'id' | 'label'> | null> {
   const match = KEY_PATTERN.exec(token)
   if (!match) return null
   const [, id, secret] = match
   const record = await kv.get<StoredKey>(PREFIX + id, 'json')
   if (!record) return null
   const ok = await timingSafeEqualText(toHex(await sha256(secret!)), record.hash)
-  return ok ? id! : null
+  return ok ? { id: id!, label: record.label } : null
 }
